@@ -1,0 +1,3 @@
+GTAC_scan                Target                             Total_beams        uGMRT_band          Input_file (0 for Raw, 1 for FIL)
+#48_099_20250424_190355    DGCVN_20250424_190455              160                BAND4               0
+48_051_20250420_191846     J0835-4510_20250420_200314         640                BAND3               1

@@ -1,0 +1,129 @@
+ght###########################################################
+#                    CONFIGURATION FILE                   #
+#  Parameters and Directories for Pulsar Search Pipeline  #
+###########################################################
+
+#----------------------------------------
+# Define USER ID
+#----------------------------------------
+# Flag to run the code to kill all processes in all available nodes link to this USER ID
+user_id = spotlight
+
+#----------------------------------------
+# Environment Initialization
+#----------------------------------------
+# Path to the environment initialization script
+environ_init_script           = /lustre_archive/apps/tdsoft/env.sh
+
+
+#----------------------------------------
+# Search type flag
+#----------------------------------------
+search_type = 0               # Zero for Periodicity search, 1 for Acceleration search
+
+
+#----------------------------------------
+# Common node flag and pipeline status path
+#----------------------------------------
+# Common node
+common_node_id = rggpu40
+
+# Status path
+pulsar_search_status_path = /lustre_archive/spotlight/data/MON_DATA/das_log/
+
+
+#----------------------------------------
+# Raw to Filterbank Conversion Configuration
+#----------------------------------------
+# Directories for Raw to Filterbank conversion (input, output, and logs)
+raw_input_base_dir = /lustre_data/spotlight/data/
+raw_flag = BeamData
+fil_flag = FilData
+
+
+#----------------------------------------
+# Cores for parallel processing
+#----------------------------------------
+# Cores to use for filterbank conversion
+num_jobs = 20
+
+# Cores to use per node, for all kind of parallel processing except filterbank conversion
+workers_per_node = 20
+
+
+data_and_input_file_generator_path = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/scripts/generate_data_and_input_files.py
+multi_node_sifting_script_path = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/scripts/multi_node_sifting_functions.py
+
+
+#----------------------------------------
+# Astro-Accelerate Configuration
+#----------------------------------------
+# Input file directory for Astro-Accelerate (AA)
+aa_input_file_dir             = /lustre_data/spotlight/data/pulsar_search_ver0_run_files/aa_run_files/input_files/
+
+# Directory containing executable scripts for AA
+aa_executable_file_dir        = /lustre_data/spotlight/data/pulsar_search_ver0_run_files/aa_run_files/scripts/
+
+# Directory for AA outputs
+aa_output_dir                 = /lustre_data/spotlight/data/AA_OUTPUT_DATA/
+
+#----------------------------------------
+# PulseLine Configuration
+#----------------------------------------
+# Input file directory for PulseLine
+pulseline_input_file_dir      = /lustre_data/spotlight/data/pulsar_search_ver0_run_files/pulseline_run_files/input_files/
+
+# Directories for PulseLine input, output, and logs and running
+pulseline_input_dir           = /lustre_data/spotlight/data/PULSELINE_INPUT_DATA/
+pulseline_output_dir          = /lustre_data/spotlight/data/PULSELINE_OUTPUT_DATA/
+
+# Define the log_directory
+aa_pulseline_log_dir          = /lustre_data/spotlight/data/AA_PULSELINE_LOG_FILES/
+
+first_stage_sifting_path      = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/SPOTLIGHT_PULSELINE/first_stage_candidate_sifting.py
+
+
+# Beam sifting flag
+beam_level_sifting = 1         # Zero for no beam level candidate sifting, one for beam level sifting
+
+final_stage_sifting_path      = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/SPOTLIGHT_PULSELINE/final_stage_candidate_sifting.py
+beam_level_folding_path       = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/SPOTLIGHT_PULSELINE/beam_level_candidate_folding.py
+
+
+#----------------------------------------
+# Classifier Configuration
+#----------------------------------------
+# Directories for Classifier input, output, and logs
+
+# Candidate classification flag
+do_classify = 1                  # Zero for no candidate classification, one for candidate classification
+
+python2_env_path              = "/lustre_archive/apps/tdsoft/conda/envs/py2_env/bin/python2"
+classifier_output_dir         = /lustre_data/spotlight/data/PULSAR_CLASSFIER_OUTPUT_DATA/
+machine_learning_files_path   = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/Machine_learning/
+
+candidate_classifier_path     = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/SPOTLIGHT_PULSELINE/classify_candidates.py
+
+#----------------------------------------
+# Final Outputs Configuration
+#----------------------------------------
+
+#Total sorting stage and code path for generating summary plots
+total_sorting_stage = 3
+summary_plot_code_path     = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/SPOTLIGHT_PULSELINE/generate_summary_plots.py
+
+#Final outputs scripts path
+final_outputs_script_path     = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/SPOTLIGHT_PULSELINE/generate_final_outputs.py
+
+
+#----------------------------------------
+# GPU and CPU Configuration
+#----------------------------------------
+# Resource directories for GPU and CPU processing
+avail_gpus_file_dir           = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/GPU_resources/
+avail_cpus_file_dir           = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/GPU_resources/
+
+# Processing delays for GPU and CPU (in seconds)
+gpu_0_start_delay             = 1         # Delay before starting GPU 0
+gpu_1_start_delay             = 2        # Delay before starting GPU 1
+file_processing_delay         = 1         # Delay between processing consecutive file
