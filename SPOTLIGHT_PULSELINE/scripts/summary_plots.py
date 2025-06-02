@@ -17,7 +17,7 @@ if not base_dir:
 
 # List of relative paths to add dynamically
 relative_paths = [
-    "input_file_dir_init/scripts",
+    "input_file_dir_init/scripts"
 ]
 
 # Loop through and add each path to sys.path
@@ -32,9 +32,7 @@ except ImportError as e:
     print("Error importing 'read_input_file_dir'. Ensure the script exists in the specified path.")
     print(e)
     sys.exit(1)
-
-import os
-import numpy as np
+    
 
 def read_candidates(input_dir, file_name, sorting_stage):
     """
@@ -117,9 +115,9 @@ def plot_and_save_figures(periods, dms, snrs, sorting_stage, output_dir):
     # Get keyword for current sorting_stage
     sorting_keyword = stage_keywords.get(sorting_stage, "Unknown_Stage")
 
-    # Define the final plots directory
+    # Define and set the final plots directory
     plots_directory = os.path.join(output_dir, "summary_plots")
-    os.makedirs(plots_directory, exist_ok=True)  # Ensure directory exists
+    os.makedirs(plots_directory, exist_ok=True)
 
     # Define file paths
     plot_files = {

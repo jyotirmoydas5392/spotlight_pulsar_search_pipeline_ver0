@@ -44,20 +44,29 @@ fil_flag = FilData
 #----------------------------------------
 # Cores for parallel processing
 #----------------------------------------
+
 # Cores to use for filterbank conversion
 num_jobs = 20
 
 # Cores to use per node, for all kind of parallel processing except filterbank conversion
 workers_per_node = 20
 
-
+# Some important module paths
+file_remove_module_path = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/scripts/remove_files.py
 data_and_input_file_generator_path = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/scripts/generate_data_and_input_files.py
 multi_node_sifting_script_path = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/scripts/multi_node_sifting_functions.py
+
+# GPTOOL flag, module, code and input file path
+run_gptool =  0        # Zero for no GPTOOL, and one for runnig GPTOOL
+gptool_module_path = /lustre_archive/apps/tdsoft/gptool_ver4.4.5.PSR/gptool
+rfi_clean_module_path = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/SPOTLIGHT_PULSELINE/process_rfi_for_fil.py
+gptool_input_file_path = /lustre_data/spotlight/data/pulsar_search_ver0_run_files/gptool_run_files/input_files/
 
 
 #----------------------------------------
 # Astro-Accelerate Configuration
 #----------------------------------------
+
 # Input file directory for Astro-Accelerate (AA)
 aa_input_file_dir             = /lustre_data/spotlight/data/pulsar_search_ver0_run_files/aa_run_files/input_files/
 
@@ -70,6 +79,7 @@ aa_output_dir                 = /lustre_data/spotlight/data/AA_OUTPUT_DATA/
 #----------------------------------------
 # PulseLine Configuration
 #----------------------------------------
+
 # Input file directory for PulseLine
 pulseline_input_file_dir      = /lustre_data/spotlight/data/pulsar_search_ver0_run_files/pulseline_run_files/input_files/
 
@@ -93,11 +103,9 @@ beam_level_folding_path       = /lustre_data/spotlight/data/pulsar_search_pipeli
 #----------------------------------------
 # Classifier Configuration
 #----------------------------------------
-# Directories for Classifier input, output, and logs
 
-# Candidate classification flag
-do_classify = 1                  # Zero for no candidate classification, one for candidate classification
-
+# Directories for Classifier input, output, and flags
+do_classify = 1                # Zero for no classification, and one for candidate classification
 python2_env_path              = "/lustre_archive/apps/tdsoft/conda/envs/py2_env/bin/python2"
 classifier_output_dir         = /lustre_data/spotlight/data/PULSAR_CLASSFIER_OUTPUT_DATA/
 machine_learning_files_path   = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/Machine_learning/
@@ -119,6 +127,7 @@ final_outputs_script_path     = /lustre_data/spotlight/data/pulsar_search_pipeli
 #----------------------------------------
 # GPU and CPU Configuration
 #----------------------------------------
+
 # Resource directories for GPU and CPU processing
 avail_gpus_file_dir           = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/GPU_resources/
 avail_cpus_file_dir           = /lustre_data/spotlight/data/pulsar_search_pipeline_ver0/GPU_resources/

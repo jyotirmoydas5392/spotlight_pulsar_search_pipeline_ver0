@@ -75,6 +75,8 @@ def final_stage_candidate_sifting(scan_id, data_id, data_type):
     dm_step = sift_params.get('dm_step')
     DM_filtering_cut_10 = sift_params.get('DM_filtering_cut_10')
     DM_filtering_cut_1000 = sift_params.get('DM_filtering_cut_1000')
+    max_harm = sift_params.get('max_harm')
+    period_tol_harm = sift_params.get('period_tol_harm')
     
     # Executing the beam sifting function
     os.system(f"source {environ_init_script}")
@@ -87,7 +89,8 @@ def final_stage_candidate_sifting(scan_id, data_id, data_type):
 
     beam_level_candidate_sifting(
         sifting_output_path, sifting_output_path, data_id, data_type, raw_input_dir, header_file_output_path, 
-        pulseline_input_file_dir, harmonic_opt_flag, period_tol_beam_sort, min_beam_cut, start_DM, end_DM, dm_step, DM_filtering_cut_10, DM_filtering_cut_1000
+        pulseline_input_file_dir, harmonic_opt_flag, period_tol_beam_sort, min_beam_cut, start_DM, end_DM, dm_step,
+        DM_filtering_cut_10, DM_filtering_cut_1000, max_harm, period_tol_harm
     )
 
 # Run the function if the script is executed

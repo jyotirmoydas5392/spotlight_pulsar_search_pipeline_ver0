@@ -13,6 +13,7 @@ if not base_dir:
 relative_paths = [
     "input_file_dir_init/scripts",
     "SPOTLIGHT_PULSELINE/scripts",
+    "scripts"
 ]
 
 # Loop through and add each path to sys.path
@@ -23,6 +24,7 @@ for relative_path in relative_paths:
 # Import necessary functions
 try:
     from final_outputs import *
+    from remove_files import *
     from read_input_file_dir import load_parameters
 except ImportError as e:
     print(f"Error importing required modules: {e}")
@@ -45,18 +47,24 @@ def generate_final_outputs(scan_id, data_id, band_id):
         print(f"Error loading parameters from configuration file: {e}")
         sys.exit(1)
 
-    # Classified candidate files directory
-    classifier_output_dir = os.path.join(params.get('classifier_output_dir'), data_id)
-    final_positive_outputs_input_dir = os.path.join(classifier_output_dir, "positive_candidates")
-    final_negative_outputs_input_dir = os.path.join(classifier_output_dir, "negative_candidates")
+    # Define the final output directory
     final_outputs_output_dir = os.path.join(params.get("raw_input_base_dir"), scan_id, "PulsarPipeData", data_id)
+    # Ensure output directory exists, and if exists clean properly
+    clean_directory_parallel(final_outputs_output_dir, params.get('workers_per_node'))
 
-    # Ensure output directory exists
-    os.makedirs(final_outputs_output_dir, exist_ok=True)
+    # Get the classifier flag
+    do_classify = params.get('do_classify')
 
-    # Generate the final PDF output from the PNG files for positive as well as negative candidates
-    pngs_to_pdf(final_positive_outputs_input_dir, final_outputs_output_dir, data_id, "positively")
-    pngs_to_pdf(final_negative_outputs_input_dir, final_outputs_output_dir, data_id, "negatively")
+    # If classifier is on, then generate the final PDF output from the PNG files for positive as well as negative candidates
+    if do_classify == 1:
+        # Classified candidate files directory and classidier flags
+        classifier_output_dir = os.path.join(params.get('classifier_output_dir'), data_id)
+        final_positive_outputs_input_dir = os.path.join(classifier_output_dir, "positive_candidates")
+        final_negative_outputs_input_dir = os.path.join(classifier_output_dir, "negative_candidates")
+        pngs_to_pdf(final_positive_outputs_input_dir, final_outputs_output_dir, data_id, "positively_classified")
+        pngs_to_pdf(final_negative_outputs_input_dir, final_outputs_output_dir, data_id, "negatively_classified")
+    else:
+        print("You are not runnign the classifier, so only the final output PDF containing all the folded profiles will be generated later on.")
 
 
     # Copy one header file for observation information extraction
@@ -76,11 +84,18 @@ def generate_final_outputs(scan_id, data_id, band_id):
 
     # Ensure output directory exists
     os.makedirs(folding_output_copy_dir, exist_ok=True)
-    os.makedirs(classifier_output_copy_dir, exist_ok=True)
 
     # Copy the required outputs
     copy_contents_only(folding_output_dir, folding_output_copy_dir)           # Copy folding outputs
-    copy_contents_only(classifier_output_dir, classifier_output_copy_dir)     # Copy classifier outputs
+
+    if do_classify == 1:
+        # Ensure output directory exists
+        os.makedirs(classifier_output_copy_dir, exist_ok=True)
+        copy_contents_only(classifier_output_dir, classifier_output_copy_dir)     # Copy classifier outputs if classifier is on.
+    
+    # Now genearte the final output PDF containing all the folded profiles, without classifiers contribution.
+    all_folded_candiadates_dir = os.path.join(folding_output_dir, "folded_outputs")
+    pngs_to_pdf(all_folded_candiadates_dir, final_outputs_output_dir, data_id, "all")
 
 
 def main():

@@ -55,15 +55,18 @@ def generate_summary_plots(data_id):
         sys.exit(1)
 
     # Extract parameters from config
+    input_file_dir = params.get('pulseline_input_file_dir')
+    total_sorting_stage = int(params.get('total_sorting_stage'))
+
     pulseline_output_dir = params.get('pulseline_output_dir')
     candidates_files_dir = os.path.join(pulseline_output_dir, data_id)
 
     classifier_output_dir = params.get('classifier_output_dir')
     plots_output_dir = os.path.join(classifier_output_dir, data_id)
-    
-    input_file_dir = params.get('pulseline_input_file_dir')
-    total_sorting_stage = int(params.get('total_sorting_stage'))
+    # Create the directory if it doesn't exist
+    os.makedirs(plots_output_dir, exist_ok=True)
 
+    
     # Generate the summary plots for different sorting stages
     summary_plots(candidates_files_dir, plots_output_dir, input_file_dir, total_sorting_stage)
 

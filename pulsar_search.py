@@ -39,7 +39,9 @@ try:
     from process_multi_node_aa_functions import *
     from multi_node_sifting_functions import *
     from multi_node_folding_functions import *
+    from multi_node_rfi_mitigation import *
     from access_informations import *
+    from remove_files import *
     logging.info("Modules imported successfully.")
 except ImportError as e:
     logging.error("Error importing required modules.", exc_info=True)
@@ -73,15 +75,19 @@ def main():
         print(f"Error loading parameters from configuration file: {e}")
         sys.exit(1)
 
-    # Step 2: Extract all parameters and paths
+    # Step 0: Extract all parameters and paths
 
-    # Data and input file generator path
+    # File remove, and data plus input file generator path
+    file_remove_module_path = params.get('file_remove_module_path')
     data_and_input_file_generator_path = params.get('data_and_input_file_generator_path')
 
     # Directories and other required parameters
     aa_executable_file_dir = params.get('aa_executable_file_dir')
     aa_input_file_dir = params.get('aa_input_file_dir')
     aa_output_dir = params.get('aa_output_dir')
+    pulseline_input_dir = params.get('pulseline_input_dir')
+    pulseline_input_file_dir = params.get('pulseline_input_file_dir')
+    pulseline_output_dir = params.get('pulseline_output_dir')
     avail_gpus_file_dir = params.get('avail_gpus_file_dir')
     environ_init_script = params.get('environ_init_script')
     log_base_dir = params.get('aa_pulseline_log_dir')
@@ -89,6 +95,10 @@ def main():
     gpu_0_start_delay = int(params.get('gpu_0_start_delay', 5))  # Default: 5 seconds
     gpu_1_start_delay = int(params.get('gpu_1_start_delay', 10))  # Default: 10 seconds
     file_processing_delay = int(params.get('file_processing_delay', 5))  # Default: 5 seconds
+
+    # RFI mitigation flag and script path
+    run_gptool = params.get('run_gptool')
+    rfi_clean_module_path = params.get('rfi_clean_module_path')
 
     # First_stage_candidate_sifting module runner path
     first_stage_sifting_path = params.get('first_stage_sifting_path')
@@ -108,8 +118,9 @@ def main():
     final_outputs_script_path = params.get("final_outputs_script_path")
     summary_plot_code_path = params.get('summary_plot_code_path')
 
-    # Get the common GPU node
+    # Get the common GPU node and workers per node
     common_node_id = params.get('common_node_id')
+    workers_per_node = params.get('workers_per_node')
 
     # Get the path for writing pipeline status
     pulsar_search_status_path = params.get("pulsar_search_status_path")
@@ -158,22 +169,38 @@ def main():
         print(f"[{i}] Processing Scan ID: {scan_id}, Data ID: {data_id}, Band: {band_id}, Type: {data_type}")
 
 
-        # The AA output_path depending on the data_id
+        # Define the AA output_path depending on the data_id
         aa_output_path = os.path.join(aa_output_dir, data_id)
-        os.makedirs(aa_output_path, exist_ok=True)
 
-        # Define the log_directory to store the logs
+        # Define and the log_directory to store the logs
         log_output_path = os.path.join(log_base_dir, data_id)
-        os.makedirs(log_output_path, exist_ok=True)
 
+        # Step 3: Clean the directories for making the pipeline able to rerun on same data without any errors.
+        # Loop for multiple directory
+        for directory in [aa_output_path, log_output_path, os.path.join(pulseline_input_dir, data_id), os.path.join(pulseline_output_dir, data_id)]:
+            print(f"Starting cleaning of directory: {directory} on node: {common_node_id}")
+            command = (
+                f'ssh -X {common_node_id} "'
+                f'echo Cleaning {directory} on {common_node_id} && '
+                f'source {environ_init_script} && echo Environment sourced && '
+                f'python3 {file_remove_module_path} {directory} {workers_per_node} && '
+                f'echo Finished cleaning {directory}" '
+                f'>> {log_output_path}/cpu_log_common_node_{common_node_id}.log 2>&1'
+            )
+            print(f"Running command:\n{command}\n")
+            try:
+                subprocess.run(command, shell=True, check=True)
+                print(f"Successfully cleaned or created directory: {directory}\n")
+            except subprocess.CalledProcessError as e:
+                print(f"Error occurred while cleaning or creating directory: {directory}")
+                print(f"Error details: {e}\n")
 
-        # Step 3: Generate input data if needed, and input files to run the pipeline
+        # Step 4: Generate input data if needed, and input files to run the pipeline
         command = (
             f'ssh -X {common_node_id} "'
             f'echo Step 1: Connecting to node {common_node_id} && '
             f'source {environ_init_script} && echo Step 2: Environment sourced && '
             f'python3 {data_and_input_file_generator_path} {config_file_path} {scan_id} {data_id} {total_beams} {data_type} {input_file_generator_dir} {band_id} && '
-            f'echo Step 3: Python script executed'
             f'>> {log_output_path}/cpu_log_common_node_{common_node_id}.log 2>&1"'
         )
 
@@ -189,7 +216,7 @@ def main():
         os.system("sleep 2")  # Sleeps for 2 seconds
 
 
-        # Step 4: Load available GPU nodes
+        # Step 5: Load available GPU nodes
         try:
             avail_gpu_nodes = np.loadtxt(
                 os.path.join(avail_gpus_file_dir, 'avail_gpu_nodes.txt'), dtype=str
@@ -202,7 +229,14 @@ def main():
             print("No available GPU nodes found in the file.")
             sys.exit(1)
 
-        # Step 5: Construct the SSH commands for GPU processing and same node CPU processing for search, shift, fold, etc.
+        # Step 6: Construct the SSH commands for RFI mitigation, GPU processing and same node CPU processing for search, shift, fold, etc.
+
+        command_template_0 = (
+            'ssh -X {node_alias} "source {environ_init_script} && '
+            'python3 {rfi_clean_module_path} {fil_files} {data_id} {scan_id} {band_id} '
+            '> {log_dir}/rfi_mitigation_cpu_log_{node_alias}_gpu_{gpu_id}.log 2>&1"'
+        )
+
 
         command_template_1 = (
             'ssh -X {node_alias} "source {environ_init_script} && '
@@ -218,11 +252,28 @@ def main():
         command_template_3 = (
             'ssh -X {node_alias} "source {environ_init_script} && '
             'python3 {beam_level_folding_path} {node_alias} {gpu_id} {data_id}'
-            '>> {log_dir}/folding_cpu_log_{node_alias}_gpu_{gpu_id}.log 2>&1"'
+            '> {log_dir}/folding_cpu_log_{node_alias}_gpu_{gpu_id}.log 2>&1"'
         )
+        
+        # Step 7: Process each node concurrently for the command template 0 for runnign GPTOOL based RFI mitigation
+        if run_gptool == 1:
+            processes = []
+            for node_alias in avail_gpu_nodes:
+                p = Process(
+                    target=multi_node_rfi_mitigation,
+                    args=(
+                        node_alias, data_id, scan_id, band_id, pulseline_input_file_dir, log_output_path, gpu_0_start_delay, gpu_1_start_delay, file_processing_delay, command_template_0)
+                )
+                processes.append(p)
+                p.start()
+
+            for p in processes:
+                p.join()
+
+            os.system("sleep 2")  # Sleeps for 2 seconds
 
 
-        # Step 6: Process each node concurrently for the command template 1 for running AA pulsar search
+        # Step 8: Process each node concurrently for the command template 1 for running AA pulsar search
         processes = []
         for node_alias in avail_gpu_nodes:
             p = Process(
@@ -239,7 +290,7 @@ def main():
         os.system("sleep 2")  # Sleeps for 2 seconds
 
 
-        # Step 7: Process each node concurrently for the command template 2 for running first stage sifting in a parallel manner
+        # Step 9: Process each node concurrently for the command template 2 for running first stage sifting in a parallel manner
         processes = []
         for node_alias in avail_gpu_nodes:
             p = Process(
@@ -256,7 +307,7 @@ def main():
         os.system("sleep 2")  # Sleeps for 2 seconds
 
 
-        # Step 8: Process all the search level sifted candidates output at once in common GPU node to do a beam level candidate filtration
+        # Step 10: Process all the search level sifted candidates output at once in common GPU node to do a beam level candidate filtration
         if beam_level_sifting == 1:
             command = (
                 f'ssh -X {common_node_id} "'
@@ -284,7 +335,7 @@ def main():
         os.system("sleep 2")  # Sleeps for 2 seconds
 
 
-        # Step 9: Process each node concurrently for the command template 3 for multinode CPU folding
+        # Step 11: Process each node concurrently for the command template 3 for multinode CPU folding
         processes = []
         for node_alias in avail_gpu_nodes:
             p = Process(
@@ -303,7 +354,7 @@ def main():
         os.system("sleep 2")  # Sleeps for 2 seconds
 
 
-        # Step 10: Process all the folded candidate output PFDs for classification
+        # Step 12: Process all the folded candidate output PFDs for classification
         if do_classify == 1:
             if not candidate_classifier_path:
                 print("Error: Missing required path for candidate classification.")
@@ -331,10 +382,13 @@ def main():
                 print(f"Error: SSH command failed with return code {e.returncode}")
                 print(f"Check log file: {log_output_path}/classification_cpu_log_common_node_{common_node_id}.log")
 
+        else:
+            print("You chose not to run the classifier to classify the candidates.")
+
         os.system("sleep 2")  # Sleeps for 2 seconds
 
 
-        # Step 11: Generate the final outputs and summary plots for sorted candidates
+        # Step 13: Generate the final outputs and summary plots for sorted candidates
         if not final_outputs_script_path:
             print("Error: Missing required path for final outputs generation.")
             sys.exit(1)
@@ -392,7 +446,6 @@ def main():
 
     with open(pulsar_search_status_file, "w") as pulsar_status_file:
         pulsar_status_file.write("analysis_status = OFF\n")
-
 
 
 if __name__ == "__main__":

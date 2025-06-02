@@ -98,7 +98,7 @@ def pngs_to_pdf(input_dir, output_dir, data_id, keyword, dpi=72):
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    target_file = os.path.join(output_path, f"{data_id}_final_folded_{keyword}_classified_candidates.pdf")
+    target_file = os.path.join(output_path, f"{data_id}_final_folded_{keyword}_candidates.pdf")
 
     # Collect all .png and .PNG files
     png_files = sorted(input_path.glob("*.png")) + sorted(input_path.glob("*.PNG"))

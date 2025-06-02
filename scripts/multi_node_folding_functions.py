@@ -45,7 +45,6 @@ if not os.path.exists(config_file_path):
 try:
     params = load_parameters(config_file_path)
     environ_init_script = params.get('environ_init_script')
-    aa_executable_file_dir = params.get('aa_executable_file_dir')
     beam_level_folding_path = params.get('beam_level_folding_path')
     logging.info("Configuration parameters loaded successfully.")
 except Exception as e:

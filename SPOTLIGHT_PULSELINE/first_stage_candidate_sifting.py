@@ -14,7 +14,7 @@ if not base_dir:
 # List of relative paths to add dynamically
 relative_paths = [
     "input_file_dir_init/scripts",
-    "SPOTLIGHT_PULSELINE/scripts",
+    "SPOTLIGHT_PULSELINE/scripts"
 ]
 
 # Loop through and add each path to sys.path
@@ -89,22 +89,18 @@ def first_stage_candidate_sifting(file, node_alias, gpu_id, data_id):
 
     # Define rename paths
     rename_input_path = os.path.join(aa_output_dir, data_id, "output", file.replace(".txt", ""))
-
     rename_output_dir = os.path.join(pulseline_input_dir, data_id)
-    # Create the directory if it does not exist
-    os.makedirs(rename_output_dir, exist_ok=True)
-
     rename_output_path = os.path.join(rename_output_dir, file.replace(".txt", ""))
+
+    # Ensure output path exists
+    os.makedirs(rename_output_path, exist_ok=True)
 
     # Perform AA output renaming
     aa_output_rename(rename_input_path, rename_output_path, fil_file, search_type, params.get("harmonic_sum_flag"))
 
     # Set up parameters for candidate sifting
     sifting_input_path = os.path.join(rename_output_dir, file.replace(".txt", ""))
-
     sifting_output_path = os.path.join(pulseline_output_dir, data_id)
-    # Create the directory if it does not exist
-    os.makedirs(sifting_output_path, exist_ok=True)
 
     # Run candidate sifting
     if search_type == 0:
@@ -124,17 +120,27 @@ def first_stage_candidate_sifting(file, node_alias, gpu_id, data_id):
     else:
         print("Select appropriate search type flag...")
 
-    # Handle harmonic optimization based on flag
+    # Handle harmonic optimization based on the flag
     if params.get('harmonic_opt_flag') == 1:
-        harmonic_optimization(sifting_output_path, sifting_output_path, file_name, params.get('period_tol_harm'))
+        # Call harmonic optimization if flag is enabled (1)
+        harmonic_filtering(
+            input_dir=sifting_output_path,
+            output_dir=sifting_output_path,
+            file_name=file_name,
+            period_tol_harm=params.get('period_tol_harm'),
+            max_harm=params.get('max_harm'),
+            DM_filtering_cut_10=params.get('DM_filtering_cut_10'),
+            DM_filtering_cut_1000=params.get('DM_filtering_cut_1000')
+        )
     elif params.get('harmonic_opt_flag') == 0:
+        # Skip harmonic optimization if flag is disabled (0)
         print("Skipping harmonic optimization.")
     else:
+        # Invalid value in the flag
         print("Invalid harmonic flag in input file.")
         sys.exit(1)
 
     print(f"CPU function for first stage sorting executed successfully for file {file}.")
-
 
 if __name__ == "__main__":
     # Define argument parser

@@ -1,143 +1,137 @@
 import numpy as np
 import os
 
-
-def is_harmonically_related(a, b, tolerance):
-    # Check if a and b are harmonically related (i.e., ratio is close to an integer)
-    ratio = a / b
-    return np.abs(ratio - round(ratio)) < tolerance
-
-def remove_harmonics(arr, period_tol_harm):
-    index = []
-    harm_cand = []
-    
-    for i in range(len(arr)):
-        harmonically_related = False
-        
-        harm_cand0 = []
-        for j in range(i):
-            
-            tolerance = arr[i] * period_tol_harm / (100 * arr[j])
-            
-            if is_harmonically_related(arr[i], arr[j], tolerance):
-                harmonically_related = True
-                
-                break
-            
-        if harmonically_related:
-            index.append(i)
-            harm_cand0.append(arr[j])
-            harm_cand0.append(arr[i])
-            harm_cand.append(harm_cand0)
-    
-    return harm_cand
-
-
-def harmonic_optimization(input_dir, output_dir, file_name, period_tol_harm):
+def is_harmonically_related(p1, p2, dm1, dm2, max_harm, period_tol, DM_slope, DM_intercept):
     """
-    Perform harmonic filtering on the candidate list and save the results.
+    Check if p1 and p2 are harmonically related up to max_harm and have similar DM.
+    Uses dynamic DM tolerance calculated from higher period.
+    """
+    max_period = max(p1, p2)
+    dm_tolerance = DM_intercept + DM_slope * max_period
+    period_ratio = p1 / p2
+    
+    for n in range(1, max_harm + 1):
+        for m in range(1, max_harm + 1):
+            # Check if period ratio is close to n/m within tolerance
+            if abs(period_ratio - (n / m)) < period_tol:
+                if abs(dm1 - dm2) <= dm_tolerance:
+                    return True
+    return False
 
+def union_find_make_set(n):
+    return list(range(n))
+
+def union_find_find(parent, x):
+    while parent[x] != x:
+        parent[x] = parent[parent[x]]
+        x = parent[x]
+    return x
+
+def union_find_union(parent, a, b):
+    pa, pb = union_find_find(parent, a), union_find_find(parent, b)
+    if pa != pb:
+        parent[pa] = pb
+
+def harmonic_filtering(input_dir, output_dir, file_name, period_tol_harm, max_harm,
+                       DM_filtering_cut_10, DM_filtering_cut_1000):
+    """
+    Perform harmonic filtering on candidates, keeping only the strongest (highest SNR) in each harmonic group.
+    
     Args:
-        file_name (str): The base name of the file to process (without extension).
-        period_tol_harm (float): The tolerance for identifying harmonics.
-        input_dir (str): The directory where input files are stored (absolute path).
-        output_dir (str): The directory where output files will be saved (absolute path).
+        input_dir (str): Directory containing input candidate file
+        output_dir (str): Directory to save filtered candidate file
+        file_name (str): Base name of candidate file (without extension)
+        period_tol_harm (float): Period tolerance factor for harmonic checking (multiplied by period)
+        max_harm (int): Maximum harmonic order to check (e.g., 20)
+        DM_filtering_cut_10 (float): DM tolerance at 10 ms period
+        DM_filtering_cut_1000 (float): DM tolerance at 1000 ms period
     """
-    
-    # Construct the full path for the input file
-    input_file_path = os.path.join(input_dir, f"{file_name}_all_sifted_candidates.txt")
-    output_file_path = os.path.join(output_dir, f"{file_name}_all_sifted_harmonic_removed_candidates.txt")
-    
 
-    # Check if the file contains only the error message from the previous function
-    with open(input_file_path, "r") as file:
-        lines = file.readlines()
-    
+    input_path = os.path.join(input_dir, f"{file_name}_all_sifted_candidates.txt")
+    output_path = os.path.join(output_dir, f"{file_name}_all_sifted_harmonic_removed_candidates.txt")
+
+    # Read input file
+    try:
+        with open(input_path, 'r') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        print(f"Input file {input_path} not found.")
+        return
+
+    # If file contains error message, write it back and return
     if len(lines) == 1 and "No valid data found to process." in lines[0]:
-        with open(output_file_path, "w") as file:
-            file.write("No valid data found to process.\n")
-        print(f"No valid data found. Exiting. Response written to {output_file_path}")
-        return  # Exit function
+        with open(output_path, 'w') as f_out:
+            f_out.write("No valid data found to process.\n")
+        print(f"No valid data found. Exiting. Response written to {output_path}")
+        return
 
     try:
-        # Load the data, skipping the header line
-        data = np.loadtxt(input_file_path, dtype=str, skiprows=1)
-
-        # Ensure data is not empty
+        # Load data skipping header, columns: Period(sec), Pdot, DM, SNR (assumed)
+        data = np.loadtxt(input_path, dtype=float, skiprows=1)
         if data.size == 0:
             raise ValueError("No valid candidate data found in the file.")
-    
     except Exception as e:
-        with open(output_file_path, "w") as file:
-            file.write("No valid data found to process.\n")
-        print(f"Error reading input file: {e}. Response written to {output_file_path}")
-        return  # Exit function
-    
-    # Form the array to process the read data...
-    A = np.array(data, dtype=float)
-    A1 = A[::-1]
-    
-    # Perform harmonic filtering
-    harmonic_candidates = remove_harmonics(A1[:, 0], period_tol_harm)
-    
-    # Sort harmonic candidates by the fundamental period
-    sorted_fundamental_and_harmonic_candidates = np.array(sorted(harmonic_candidates, key=lambda x: x[0]))
-    fundamental_candidates = sorted(list(set(sorted_fundamental_and_harmonic_candidates[:, 0])))
-    print(sorted_fundamental_and_harmonic_candidates)
-    
-    harmonic_len = []
-    harmonic_candidate_index = []
-    for i in range(0, len(fundamental_candidates)):
-        harmonic_cand_index_temp = []
-        X0 = np.where(sorted_fundamental_and_harmonic_candidates[:, 0] == fundamental_candidates[i])
-        
-        X1 = np.where(A1[:, 0] == fundamental_candidates[i])
-        harmonic_cand_index_temp.append(X1[0][0])
-        
-        for j in range(0, len(X0[0])):
-            X2 = np.where(A1[:, 0] == sorted_fundamental_and_harmonic_candidates[:, 1][X0[0][j]])
-            harmonic_cand_index_temp.append(X2[0][0])
-            
-        harmonic_len.append(len(harmonic_cand_index_temp))
-        harmonic_candidate_index.append(harmonic_cand_index_temp)
-    
-    max_harmonic_len = np.max(harmonic_len)
-    harmonic_index_array = np.empty((int(len(harmonic_candidate_index)), int(max_harmonic_len)))
-    harmonic_index_array[:] = np.nan
-    
-    for i in range(int(len(harmonic_candidate_index))):
-        for j in range(int(len(harmonic_candidate_index[i]))):
-            harmonic_index_array[i][j] = harmonic_candidate_index[i][j]
-    
-    flatten_harmonic_index_array = np.array([x for x in np.unique(harmonic_index_array.flatten()) if str(x) != 'nan'], dtype=int)
-    
-    A2 = np.delete(A1, flatten_harmonic_index_array, axis=0)
-    A2 = list(A2)
-    
-    for i in range(int(len(harmonic_candidate_index))):
-        harmonic_SNR_array = np.empty(int(len(A1[:, 0])))
-        harmonic_SNR_array[:] = np.nan
-        
-        for j in range(int(len(harmonic_candidate_index[i]))):
-            harmonic_SNR_array[harmonic_candidate_index[i][j]] = A1[:, 3][harmonic_candidate_index[i][j]]
-            
-        X0 = np.where(harmonic_SNR_array == np.nanmax(harmonic_SNR_array))
-        A2.append(A1[X0[0][0]])
-        
-    A2 = np.array(sorted(A2, key=lambda x: x[0]))
-    A2 = A2[::-1]
+        with open(output_path, 'w') as f_out:
+            f_out.write("No valid data found to process.\n")
+        print(f"Error reading input file: {e}. Response written to {output_path}")
+        return
 
-    # Construct the output file path
-    output_file_path = os.path.join(output_dir, file_name + "_all_sifted_harmonic_removed_candidates.txt")
-    
-    # Open the output file in write mode and write the header
-    with open(output_file_path, "w") as file:
-        file.write("Period(sec)   Pdot(s/s)  DM(pc/cc)   SNR\n")
+    periods = data[:, 0]
+    p_dots = data[:, 1]
+    DMs = data[:, 2]
+    SNRs = data[:, 3]
 
-        # Iterate over the A2 array and write each row of data
-        for row in A2:
-            # Ensure proper formatting of the values with space separation
-            file.write(f"{row[0]:.10f}     {row[1]:.6e}     {row[2]:.2f}     {row[3]:.2f}\n")
+    n_candidates = len(periods)
 
-    # Print confirmation after saving the results
-    print(f"Results saved to {output_file_path}")
+    # Calculate DM tolerance slope and intercept for dynamic DM tolerance
+    DM_slope = (DM_filtering_cut_1000 - DM_filtering_cut_10) / (1.000 - 0.010)  # period in seconds
+    DM_intercept = DM_filtering_cut_10 - DM_slope * 0.010
+
+    # Build union-find structure for harmonic groups
+    parent = union_find_make_set(n_candidates)
+
+    # Period tolerance depends on higher period times period_tol_harm factor
+    # We'll use period_tol = higher_period * period_tol_harm
+
+    # Check all candidate pairs for harmonic relation
+    for i in range(n_candidates):
+        for j in range(i + 1, n_candidates):
+            higher_period = max(periods[i], periods[j])
+            period_tol = higher_period * period_tol_harm
+            if is_harmonically_related(periods[i], periods[j], DMs[i], DMs[j], max_harm, period_tol, DM_slope, DM_intercept):
+                union_find_union(parent, i, j)
+
+    # Group candidates by their root parent
+    groups = {}
+    for idx in range(n_candidates):
+        root = union_find_find(parent, idx)
+        groups.setdefault(root, []).append(idx)
+
+    # For each group, pick candidate with highest SNR as fundamental and remove others
+    fundamental_indices = []
+    removed_indices = set()
+
+    for group in groups.values():
+        group_snrs = SNRs[group]
+        max_snr_idx_in_group = group[np.argmax(group_snrs)]
+        fundamental_indices.append(max_snr_idx_in_group)
+        # Mark others as removed
+        for idx in group:
+            if idx != max_snr_idx_in_group:
+                removed_indices.add(idx)
+
+    # Candidates to keep = those not removed
+    keep_indices = sorted(list(set(range(n_candidates)) - removed_indices))
+
+    filtered_data = data[keep_indices]
+
+    # Sort filtered data by period descending (optional)
+    filtered_data = filtered_data[np.argsort(filtered_data[:, 0])[::-1]]
+
+    # Write filtered candidates to output
+    with open(output_path, 'w') as f_out:
+        f_out.write("Period(sec)   Pdot(s/s)  DM(pc/cc)   SNR\n")
+        for row in filtered_data:
+            f_out.write(f"{row[0]:.10f}     {row[1]:.6e}     {row[2]:.2f}     {row[3]:.2f}\n")
+
+    print(f"Harmonic filtering done. Results saved to {output_path}")

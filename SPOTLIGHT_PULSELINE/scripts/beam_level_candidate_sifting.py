@@ -47,8 +47,6 @@ def extract_beam_id(filename):
         return match.group(1)  # Return the matched BM ID
     return None  # Return None if no match is found
 
-import os
-import shutil
 
 def copy_ahdr_files(data_id, input_dir, output_dir):
     """
@@ -461,7 +459,7 @@ def remove_duplicate_candidates_from_beams(beam_ids, harmonic_opt_flag, output_d
         print(f"Error while processing beam IDs: {e}")
 
 
-def beam_level_candidate_sifting(input_dir, output_dir, data_id, data_type, ahdr_input_dir, ahdr_output_dir, input_file_dir, harmonic_opt_flag, period_tol_beam_sort, min_beam_cut, start_DM, end_DM, dm_step, DM_filtering_cut_10, DM_filtering_cut_1000):
+def beam_level_candidate_sifting(input_dir, output_dir, data_id, data_type, ahdr_input_dir, ahdr_output_dir, input_file_dir, harmonic_opt_flag, period_tol_beam_sort, min_beam_cut, start_DM, end_DM, dm_step, DM_filtering_cut_10, DM_filtering_cut_1000, max_harm, period_tol_harm):
     # # Copies the adhr files for extrating beam information in further analysis for starting from RAW files only
     # if data_type == 0:
     #     copy_ahdr_files(data_id, ahdr_input_dir, ahdr_output_dir)
@@ -548,8 +546,8 @@ def beam_level_candidate_sifting(input_dir, output_dir, data_id, data_type, ahdr
     Filtered_period_list0 = [x for x in np.unique(Periods_flatten) if str(x) != 'nan']
     #print(Filtered_period_list0)
     tot_cand = len(Filtered_period_list0)
-    unique_period_list0 = []
-    Period_tol_array = []
+    uniq_period_list0 = []
+    period_tol_array = []
 
     print(f"Filtered unique period list length: {len(Filtered_period_list0)}")
 
@@ -557,8 +555,8 @@ def beam_level_candidate_sifting(input_dir, output_dir, data_id, data_type, ahdr
         indices = np.where(
             Filtered_period_list0 <= Filtered_period_list0[0] + Filtered_period_list0[0] * (period_tol_beam_sort / 100.0)
         )
-        unique_period_list0.append(Filtered_period_list0[0])
-        Period_tol_array.append(Filtered_period_list0[0] * (period_tol_beam_sort / 100.0))
+        uniq_period_list0.append(Filtered_period_list0[0])
+        period_tol_array.append(Filtered_period_list0[0] * (period_tol_beam_sort / 100.0))
         Filtered_period_list0 = np.delete(Filtered_period_list0, indices[0])
 
 
@@ -585,12 +583,50 @@ def beam_level_candidate_sifting(input_dir, output_dir, data_id, data_type, ahdr
 
 
     # Now the sorting begins
-    for i, uniq_period in enumerate(unique_period_list0):
+    for i, uniq_period in enumerate(uniq_period_list0):
         if i == 0:
-            index = np.where(Period_array <= uniq_period + Period_tol_array[i] / 2)
+            index = np.where(Period_array <= uniq_period + period_tol_array[i] / 2)
         else:
-            index = np.where((Period_array > unique_period_list0[i - 1] + Period_tol_array[i - 1] / 2) &
-                             (Period_array <= uniq_period + Period_tol_array[i] / 2))
+            index = np.where((Period_array > uniq_period_list0[i - 1] + period_tol_array[i - 1] / 2) &
+                             (Period_array <= uniq_period + period_tol_array[i] / 2))
+    
+    # for i, uniq_period in enumerate(uniq_period_list0):
+    #     if i == 0:
+    #         base_index = np.where(Period_array <= uniq_period + period_tol_array[i] / 2)
+    #     else:
+    #         base_index = np.where(
+    #             (Period_array > uniq_period_list0[i - 1] + period_tol_array[i - 1] / 2) &
+    #             (Period_array <= uniq_period + period_tol_array[i] / 2)
+    #         )
+
+    #     harmonic_indices_list = []
+
+    #     # All rational harmonic ratios: uniq_period * (n / m)
+    #     for n in range(1, max_harm + 1):
+    #         for m in range(1, max_harm + 1):
+    #             if n == m:
+    #                 continue  # Skip identity
+    #             harmonic_period = uniq_period * n / m
+    #             tol = period_tol_harm * harmonic_period
+    #             matching_indices = np.where(np.abs(Period_array - harmonic_period) <= tol)
+    #             if matching_indices[0].size > 0:
+    #                 harmonic_indices_list.append(matching_indices)
+
+    #     if harmonic_indices_list:
+    #         harmonic_indices_arr = np.hstack([
+    #             np.vstack(indices) for indices in harmonic_indices_list
+    #         ])  # shape (2, N_harm)
+    #     else:
+    #         harmonic_indices_arr = np.empty((2, 0), dtype=int)
+
+    #     # Combine base and harmonic indices
+    #     base_indices_arr = np.vstack(base_index)  # shape (2, N_base)
+    #     combined = np.hstack([base_indices_arr, harmonic_indices_arr])  # shape (2, N_total)
+
+    #     # Remove duplicate index pairs
+    #     index = np.unique(combined.T, axis=0).T  # shape (2, N)
+
+
 
         print(index[0], index[1])
         beam_id_index, cand_index = index[0], index[1]

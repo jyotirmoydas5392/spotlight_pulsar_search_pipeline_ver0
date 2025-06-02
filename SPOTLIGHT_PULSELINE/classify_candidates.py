@@ -13,6 +13,7 @@ if not base_dir:
 relative_paths = [
     "input_file_dir_init/scripts",
     "SPOTLIGHT_PULSELINE/scripts",
+    "scripts"
 ]
 
 # Loop through and add each path to sys.path
@@ -23,6 +24,7 @@ for relative_path in relative_paths:
 # Import necessary functions
 try:
     from classifier import *
+    from remove_files import *
     from read_input_file_dir import load_parameters
 except ImportError as e:
     print(f"Error importing required modules: {e}")
@@ -61,9 +63,11 @@ def run_classifier(data_id):
         print("Error: Missing required parameters in the configuration file.")
         sys.exit(1)
 
-    # Classifier output path
+    # Define the classifier output path
     classifier_output_path = os.path.join(classifier_output_dir, data_id)
-    os.makedirs(classifier_output_path, exist_ok=True)
+    
+    # Ensure output directory exists, and if exists clean properly
+    clean_directory_parallel(classifier_output_path, params.get('workers_per_node'))
 
     # PFD files directory
     classifier_pfd_files_dir = os.path.join(classifier_input_dir, folded_outputs)

@@ -15,8 +15,6 @@ def aa_output_rename(input_dir, output_dir, file_name, search_type, harmonic_sum
     :param search_type: Type of search (0 for periodicity, 1 for acceleration search).
     :param harmonic_sum_flag: Flag to determine which file pattern to use in acceleration search.
     """
-    # Ensure output path exists
-    os.makedirs(output_dir, exist_ok=True)
 
     if search_type == 0:
         file = os.path.join(input_dir, "global_periods.dat")

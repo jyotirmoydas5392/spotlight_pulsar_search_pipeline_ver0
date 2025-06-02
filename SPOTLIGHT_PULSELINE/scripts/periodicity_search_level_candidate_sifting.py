@@ -167,9 +167,9 @@ def periodicity_search_level_sift_candidates(input_dir, output_dir, file_name, s
         #  A0[:,1] is SNR array
 
         # Deletes all the candidates having zero-frequency, zero SNR and very very high SNR
-        A0 = A0[A0[:, 1] != 0]
-        A0 = A0[A0[:, 2] > 0]
-        A0 = A0[A0[:, 2] < 10**8]
+        A0 = A0[A0[:, 0] != 0]
+        A0 = A0[A0[:, 1] > 0]
+        A0 = A0[A0[:, 1] < 10**8]
     
         cand_array_len = len(A0[:,0])
         
@@ -184,19 +184,19 @@ def periodicity_search_level_sift_candidates(input_dir, output_dir, file_name, s
 
     # Unique Period filtering
     Period_flatten = Period_array.flatten()
-    filtered_Period_list0 = [x for x in np.unique(Period_flatten) if str(x) != 'nan']
-    print(filtered_Period_list0)
-    tot_cand = len(filtered_Period_list0)
-    uniq_Period_list0 = []
-    period_tol_array = [], []
+    filtered_period_list0 = [x for x in np.unique(Period_flatten) if str(x) != 'nan']
+    print(filtered_period_list0)
+    tot_cand = len(filtered_period_list0)
+    uniq_period_list0 = []
+    period_tol_array = []
 
-    print(f"Filtered unique Period list length: {len(filtered_Period_list0)}")
+    print(f"Filtered unique Period list length: {len(filtered_period_list0)}")
 
-    while len(filtered_Period_list0) > 0:
-        indices = np.where(filtered_Period_list0 <= filtered_Period_list0[0] + period_tol_init_sort / 100.0)
-        #period_tol_array.append(filtered_Period_list0[0]*period_tol_init_sort / 100.0)
-        uniq_Period_list0.append(filtered_Period_list0[0])
-        filtered_Period_list0 = np.delete(filtered_Period_list0, indices[0])
+    while len(filtered_period_list0) > 0:
+        indices = np.where(filtered_period_list0 <= filtered_period_list0[0] + period_tol_init_sort / 100.0)
+        period_tol_array.append(filtered_period_list0[0] * (period_tol_init_sort / 100.0))
+        uniq_period_list0.append(filtered_period_list0[0])
+        filtered_period_list0 = np.delete(filtered_period_list0, indices[0])
 
     # Final filtering and output
     output_file = os.path.join(output_dir, f"{file_name}_all_sifted_candidates.txt")
@@ -205,12 +205,13 @@ def periodicity_search_level_sift_candidates(input_dir, output_dir, file_name, s
 
     print(f"Writing output to {output_file}")
 
-    for i, uniq_Period in enumerate(uniq_Period_list0):
+    # Now the sorting begins
+    for i, uniq_period in enumerate(uniq_period_list0):
         if i == 0:
-            index = np.where(Period_array <= uniq_Period + period_tol_init_sort/200)
+            index = np.where(Period_array <= uniq_period + period_tol_array[i] / 2)
         else:
-            index = np.where((Period_array > uniq_Period_list0[i - 1] +  period_tol_init_sort/200) &
-                             (Period_array <= uniq_Period + period_tol_init_sort/200))
+            index = np.where((Period_array > uniq_period_list0[i - 1] + period_tol_array[i - 1] / 2) &
+                            (Period_array <= uniq_period + period_tol_array[i] / 2))
 
         DM_index, cand_index = index[0], index[1]
         DM_groups = consecutive(np.unique(DM_index))
